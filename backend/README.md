@@ -109,6 +109,8 @@ Considerando o uso em vários dispositivos e intermitência de rede, a sincroniz
 
 ## ⚙️ Rodando o projeto em dev
 
+Porta padrão `3000`, pode alterar a variável `PORT` no arquivo `/backend/.env` (veja .env.example).
+
 1. Instale dependências
 ```
 npm install
@@ -137,7 +139,7 @@ npm run build
 npm run lint
 ```
 
-* Test
+* Testes
 ```
 npm run test
 ```
