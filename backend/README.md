@@ -127,11 +127,16 @@ npm run start:dev
 ```
 ---
 
-## ⚙️ Mais comandos úteis
+## ⚙️ Mais comandos úteis (veja `scripts` em `package.json`)
 
 * Build para produção (resultado na pasta dist)
 ```
 npm run build
+```
+
+* Start para produção
+```
+npm run start:prod
 ```
 
 * Linter
