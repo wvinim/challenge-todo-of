@@ -1,6 +1,7 @@
 # 📝 Todo Sync Backend
 
 API para sincronização de tarefas (todo list) construído com **NestJS**, **Prisma** e **SQLite**
+
 ---
 
 ## 🚀 Funcionalidades
@@ -84,6 +85,7 @@ A arquitetura guiada por módulos facilita o crescimento do projeto de maneira s
      ├─ tasks.service.ts
      └─ tasks.module.ts
 ```
+
 ---
 
 ## ⚖️ Estratégia de Resolução de Conflitos
@@ -103,6 +105,8 @@ Considerando o uso em vários dispositivos e intermitência de rede, a sincroniz
 	•	O updatedAt das tarefas determina o que é novo para o pull
 	•	O deletedAt da DeletedTask garante exclusões sincronizáveis
 
+---
+
 ## ⚙️ Rodando o projeto em dev
 
 1. Instale dependências
@@ -119,6 +123,7 @@ npx prisma migrate dev --name init
 ```
 npm run start:dev
 ```
+---
 
 ## ⚙️ Mais comandos úteis
 
@@ -137,12 +142,18 @@ npm run lint
 npm run test
 ```
 
+---
+
 ## Observações ao avaliador
 
 * Utilizei o SQLite com a url hardcoded no prisma (poderia ser qualquer banco relacional via docker), devido a simplicidade do projeto.
 * Foi necessário utilizar a injeção de dependência para que o módulo tasks pudesse acessar o service do Prisma durante os testes.
 * Apliquei apenas dois testes unitários em tasks.service como exemplo de conhecimento da ferramenta.
 
+---
+
 ## License
 
 Este projeto é [MIT licensed](https://github.com/wvinim/challenge-todo-of/blob/main/LICENSE).
+
+---
