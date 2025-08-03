@@ -1,98 +1,148 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📝 Todo Sync Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API para sincronização de tarefas (todo list) construído com **NestJS**, **Prisma** e **SQLite**
+---
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Funcionalidades
 
-## Description
+- CRUD completo de tarefas com sincronização bidirecional via endpoints `/tasks/push` e `/tasks/pull`
+- Suporte a múltiplos dispositivos
+- **Resolução de conflitos** com estratégia básica, onde a última atualização vence.
+- Registro de deleções com a tabela `DeletedTask`
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 📦 Estrutura dos dados
 
-```bash
-$ npm install
+### `Task`
+| Campo        | Tipo     | Descrição                       |
+|--------------|----------|---------------------------------|
+| `id`         | UUID     | Identificador único da tarefa   |
+| `title`      | String   | Título da tarefa                |
+| `description`| String   | Descrição da tarefa             |
+| `done`       | Boolean  | Pendete 0 ou Concluída 1        |
+| `createdAt`  | DateTime | Data de criação                 |
+| `updatedAt`  | DateTime | Última atualização              |
+
+### `DeletedTask`
+| Campo       | Tipo     | Descrição                       |
+|-------------|----------|---------------------------------|
+| `id`        | UUID     | ID da tarefa deletada           |
+| `deletedAt` | DateTime | Quando foi marcada como deletada|
+
+---
+
+## 🔄 Endpoints de Sincronização
+
+### `POST /tasks/push`
+
+Envia alterações do app para o backend.
+
+**Payload esperado:**
+```json
+{
+  "created": [ /* lista de novas tarefas */ ],
+  "updated": [ /* lista de tarefas modificadas */ ],
+  "deleted": [ "id1", "id2" ] // lista de IDs deletados
+}
 ```
 
-## Compile and run the project
+### `GET /tasks/pull?lastPulledAt=timestamp`
 
-```bash
-# development
-$ npm run start
+Recebe alterações ocorridas no backend desde o último pull.
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+**Payload esperado:**
+```json
+{
+  {
+    "changes": {
+      "tasks": [ /* tarefas novas ou atualizadas */ ],
+      "tasks_deleted": [ "id1", "id2" ]
+    },
+    "timestamp": 1722746030123
+  }
+}
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+📦 Estrutura do projeto
 
-# e2e tests
-$ npm run test:e2e
+Criei a base do módulo tasks através cli do nest utilizando os comandos:
 
-# test coverage
-$ npm run test:cov
+```
+nest generate module tasks
+nest generate service tasks
+nest generate controller tasks
 ```
 
-## Deployment
+A arquitetura guiada por módulos facilita o crescimento do projeto de maneira simples e bem legível, com esta estrutura de pastas:
+```
+/src
+ ├─ /tasks
+     ├─ tasks.controller.ts
+     ├─ tasks.service.ts
+     └─ tasks.module.ts
+```
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## ⚖️ Estratégia de Resolução de Conflitos
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Considerando o uso em vários dispositivos e intermitência de rede, a sincronização adota uma abordagem simples:
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+✅ upsert (create ou update):
+	•	Usado para todos os dados recebidos em created e updated
+	•	Garante que tarefas com mesmo id sejam atualizadas se já existirem
+	•	Evita falhas por duplicidade ou reenvio
+
+✅ Tolerância a exclusões:
+	•	Tentativas de deletar tarefas já inexistentes não causam erro
+	•	Cada deleção registrada na tabela DeletedTask é retornada no pull
+
+✅ Baseado em timestamp:
+	•	O updatedAt das tarefas determina o que é novo para o pull
+	•	O deletedAt da DeletedTask garante exclusões sincronizáveis
+
+## ⚙️ Rodando o projeto em dev
+
+1. Instale dependências
+```
+npm install
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+2. Rode as migrações
+```
+npx prisma migrate dev --name init
+```
 
-## Resources
+3. Inicie o servidor
+```
+npm run start:dev
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## ⚙️ Mais comandos úteis
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+* Build para produção (resultado na pasta dist)
+```
+npm run build
+```
 
-## Support
+* Linter
+```
+npm run lint
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+* Test
+```
+npm run test
+```
 
-## Stay in touch
+## Observações ao avaliador
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+* Utilizei o SQLite com a url hardcoded no prisma (poderia ser qualquer banco relacional via docker), devido a simplicidade do projeto.
+* Foi necessário utilizar a injeção de dependência para que o módulo tasks pudesse acessar o service do Prisma durante os testes.
+* Apliquei apenas dois testes unitários em tasks.service como exemplo de conhecimento da ferramenta.
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Este projeto é [MIT licensed](https://github.com/wvinim/challenge-todo-of/blob/main/LICENSE).
