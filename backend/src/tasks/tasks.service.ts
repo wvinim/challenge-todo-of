@@ -6,25 +6,35 @@ const prisma = new PrismaClient();
 @Injectable()
 export class TasksService {
   async handlePull(lastPulledAt?: string) {
-    const since = lastPulledAt ? new Date(Number(lastPulledAt)) : new Date(0);
+  const since = lastPulledAt ? new Date(Number(lastPulledAt)) : new Date(0);
 
-    const changes = await prisma.task.findMany({
-      where: {
-        updatedAt: {
-          gt: since,
-        },
+  const updatedTasks = await prisma.task.findMany({
+    where: {
+      updatedAt: {
+        gt: since,
       },
-    });
-
-    const latestTimestamp = Date.now();
-
-    return {
-      changes: {
-        tasks: changes,
+    },
+  });
+  
+  const deletedTasks = await prisma.deletedTask.findMany({
+    where: {
+      deletedAt: {
+        gt: since,
       },
-      timestamp: latestTimestamp,
-    };
-  }
+    },
+    select: { id: true },
+  });
+
+  const latestTimestamp = Date.now();
+
+  return {
+    changes: {
+      tasks: updatedTasks,
+      tasks_deleted: deletedTasks.map(d => d.id),
+    },
+    timestamp: latestTimestamp,
+  };
+}
 
   async handlePush(body: {
     created: Task[];
@@ -58,6 +68,7 @@ export class TasksService {
     for (const id of deleted) {
       try {
         await prisma.task.delete({ where: { id } });
+        await prisma.deletedTask.create({ data: { id } });
       } catch (e) {
         // Ignora se a tarefa já não existir
       }
