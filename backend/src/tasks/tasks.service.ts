@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient, Task } from '@prisma/client';
+import { Task } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class TasksService {
+  constructor(private prisma: PrismaService) {}
+
   async handlePull(lastPulledAt?: string) {
     const since = lastPulledAt ? new Date(Number(lastPulledAt)) : new Date(0);
 
-    const updatedTasks = await prisma.task.findMany({
+    const updatedTasks = await this.prisma.task.findMany({
       where: {
         updatedAt: {
           gt: since,
@@ -16,7 +18,7 @@ export class TasksService {
       },
     });
 
-    const deletedTasks = await prisma.deletedTask.findMany({
+    const deletedTasks = await this.prisma.deletedTask.findMany({
       where: {
         deletedAt: {
           gt: since,
@@ -46,7 +48,7 @@ export class TasksService {
     const allTasks = [...created, ...updated];
 
     for (const task of allTasks) {
-      await prisma.task.upsert({
+      await this.prisma.task.upsert({
         where: { id: task.id },
         create: {
           id: task.id,
@@ -67,8 +69,8 @@ export class TasksService {
 
     for (const id of deleted) {
       try {
-        await prisma.task.delete({ where: { id } });
-        await prisma.deletedTask.create({ data: { id } });
+        await this.prisma.task.delete({ where: { id } });
+        await this.prisma.deletedTask.create({ data: { id } });
         // eslint-disable-next-line
       } catch (e) {
         // Ignora se a tarefa já não existir
